@@ -1,0 +1,81 @@
+.login-container {
+  background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)),
+    url(../../assets/wallpaper.jpg) center/cover fixed no-repeat;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.login-box {
+  max-width: 600px;
+  min-width: 400px;
+  background: linear-gradient(
+    135deg rgba(255, 255, 255, 0.1),
+    rgba(255, 255, 255, 0)
+  );
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.37);
+}
+
+.login-box form {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+}
+
+.login-box .input {
+  background: none;
+  outline: none;
+  border: none;
+  color: #fff;
+  border-bottom: 2px solid white;
+}
+.login {
+  padding-top: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  justify-content: start;
+  gap: 2.5rem;
+  padding-bottom: 2rem;
+}
+.login .input {
+  border-radius: 30px;
+  outline: none;
+  border: none;
+  background-color: rgba(0, 0, 0, 0.3);
+  width: 20rem;
+  height: 3rem;
+  padding: 0px 20px;
+}
+.login h2 {
+  margin-top: 10px;
+  margin-bottom: 20px;
+  color: #fff;
+}
+.login .button {
+  width: 7rem;
+  background-color: #007bff;
+  color: #fff;
+  padding: 3px 5px;
+}
+.login div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+.login div a {
+  color: #007bff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 3px;
+}
+.login div img {
+  height: 12px;
+}
