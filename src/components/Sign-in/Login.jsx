@@ -1,12 +1,20 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./Sign-in.css";
 import right from "../../assets/chevron-right.png";
 import { Link } from "react-router-dom";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  // const navigate = useNavigate();
+  // useEffect(() => {
+  //   const token = JSON.parse(localStorage.getItem("token"));
+  //   if (token) {
+  //     navigate("/");
+  //   }
+  // }, [navigate]);
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -28,6 +36,7 @@ const Login = () => {
         localStorage.setItem("token", data.token);
         alert("Login successful!");
         // Redirect user or update state to indicate successful login
+        // navigate("/");
       } else {
         alert("Login failed. Please try again.");
       }
