@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import "./Hero.css";
 import { Avatar, Modal, Box, TextField, Button, Chip } from "@mui/material";
 import { Dropdown } from "@mui/base/Dropdown";
@@ -11,15 +11,23 @@ import GroupAddIcon from "@mui/icons-material/GroupAdd";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import UserItem from "../miscellaneous/UserItem";
-import ChatHeader from "../miscellaneous/ChatHeader";
+import ChatSection from "../ChatSection/ChatSection";
+import { io } from "socket.io-client";
+import logo from "../../assets/chat.png";
+import CircularProgress from "@mui/material/CircularProgress";
 
 const Hero = () => {
   const [groups, setGroups] = useState([]);
-  const [chats, setChats] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState("");
   const [selectedChat, setSelectedChat] = useState(null);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [socketConnected, setSocketConnected] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const [typing, setTyping] = useState(false);
+  const [socket, setSocket] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [groupModalOpen, setGroupModalOpen] = useState(false);
   const [chatModalOpen, setChatModalOpen] = useState(false);
@@ -27,8 +35,11 @@ const Hero = () => {
   const [userSearch, setUserSearch] = useState("");
   const [userResults, setUserResults] = useState([]);
   const [selectedUsers, setSelectedUsers] = useState([]);
+  const selectedChatCompareRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
 
   const navigate = useNavigate();
+  const ENDPOINT = "http://localhost:8800";
 
   const parseJwt = (token) => {
     try {
@@ -41,6 +52,93 @@ const Hero = () => {
   const token = localStorage.getItem("token");
   const decodedToken = parseJwt(token);
   const currentUserId = decodedToken.userId;
+
+  useEffect(() => {
+    const socketInstance = io(ENDPOINT);
+    setSocket(socketInstance);
+
+    socketInstance.on("connected", () => setSocketConnected(true));
+    socketInstance.on("typing", () => setIsTyping(true));
+    socketInstance.on("stop typing", () => setIsTyping(false));
+    socketInstance.on("message received", (newMessageReceived) => {
+      if (selectedChatCompareRef.current !== newMessageReceived.chat._id) {
+        // Optionally, show a notification
+      } else {
+        setMessages((prevMessages) => [...prevMessages, newMessageReceived]);
+      }
+    });
+
+    return () => {
+      socketInstance.disconnect();
+    };
+  }, [ENDPOINT, currentUser]);
+
+  useEffect(() => {
+    if (socket && currentUser) {
+      socket.emit("setup", currentUser);
+    }
+  }, [currentUser, socket]);
+
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    socket.emit("stop typing", selectedChat._id);
+    if (!newMessage.trim()) return;
+
+    try {
+      const response = await axios.post(
+        "http://localhost:8800/messages",
+        { chatId: selectedChat._id, content: newMessage },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const updatedChat = {
+        ...selectedChat,
+        latestMessage: response.data,
+      };
+      socket.emit("new message", response.data);
+      updateGroup(updatedChat);
+      setMessages((prevMessages) => [...prevMessages, response.data]);
+      setNewMessage("");
+      setGroups((prevGroups) =>
+        prevGroups.map((group) =>
+          group._id === updatedChat._id ? updatedChat : group
+        )
+      );
+    } catch (error) {
+      console.error("Error sending message:", error);
+    }
+  };
+
+  const typingHandler = (e) => {
+    setNewMessage(e.target.value);
+
+    if (!socketConnected || !selectedChat) return;
+
+    if (!typing) {
+      setTyping(true);
+      socket.emit("typing", selectedChat._id);
+    }
+
+    const lastTypingTime = new Date().getTime();
+
+    // Clear the previous timeout
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+
+    // Set a new timeout to stop typing after 3 seconds
+    typingTimeoutRef.current = setTimeout(() => {
+      const currentTime = new Date().getTime();
+      const timeDiff = currentTime - lastTypingTime;
+
+      if (timeDiff >= 3000 && typing) {
+        socket.emit("stop typing", selectedChat._id);
+        setTyping(false);
+      }
+    }, 3000);
+  };
 
   const fetchChats = async () => {
     setLoading(true);
@@ -57,6 +155,30 @@ const Hero = () => {
       setLoading(false);
     }
   };
+
+  const fetchMessages = async (chatId) => {
+    // setLoading(true);
+    try {
+      const response = await axios.get(
+        `http://localhost:8800/messages/${chatId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      setMessages(response.data);
+      if (socket) {
+        socket.emit("join chat", chatId);
+        selectedChatCompareRef.current = chatId;
+      }
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+    } finally {
+      // setLoading(false);
+    }
+  };
+
   const updateGroup = (updatedGroup) => {
     setGroups((prevGroups) =>
       prevGroups.map((group) =>
@@ -65,42 +187,51 @@ const Hero = () => {
     );
     setSelectedChat(updatedGroup);
   };
-  const fetchUser = async () => {
-    const currentUserResponse = await axios.get(
-      `http://localhost:8800/user/${currentUserId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-    const currentUser = currentUserResponse.data;
 
-    try {
-      const profileImageResponse = await axios.get(
-        `http://localhost:8800/pic/${currentUser.email}`,
-        {
-          responseType: "blob",
-        }
-      );
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        currentUser.pic = reader.result;
-        setCurrentUser(currentUser);
-      };
-      reader.onerror = () => {
-        setCurrentUser(currentUser);
-      };
-      reader.readAsDataURL(profileImageResponse.data);
-    } catch (error) {
-      console.error("Error fetching profile image:", error);
-      setCurrentUser(currentUser);
-    }
-  };
   useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const currentUserResponse = await axios.get(
+          `http://localhost:8800/user/${currentUserId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        const currentUser = currentUserResponse.data;
+        setCurrentUser(currentUser);
+      } catch (error) {
+        console.error("Error fetching user:", error.message);
+      }
+    };
+
     fetchUser();
     fetchChats();
-  }, []);
+  }, [currentUserId, token]);
+
+  useEffect(() => {
+    if (!socket) {
+      // If the socket is not initialized, return early
+      return;
+    }
+
+    const messageHandler = (newMessageReceived) => {
+      if (selectedChatCompareRef.current !== newMessageReceived.chat._id) {
+        // Optionally, show a notification
+      } else {
+        setMessages((prevMessages) => [...prevMessages, newMessageReceived]);
+      }
+    };
+
+    socket.on("message received", messageHandler);
+
+    return () => {
+      socket.off("message received", messageHandler);
+    };
+  }, [socket]);
+
+  // Move the messages dependency out of useEffect to avoid re-registering the event listener
 
   const handleSearch = async (event) => {
     event.preventDefault();
@@ -117,32 +248,6 @@ const Hero = () => {
           },
         }
       );
-
-      const groupsWithImages = await Promise.all(
-        result.data.map(async (group) => {
-          try {
-            const response = await axios.get(
-              `http://localhost:8800/pic/${group.email}`,
-              {
-                responseType: "blob",
-              }
-            );
-            const reader = new FileReader();
-            return new Promise((resolve, reject) => {
-              reader.onloadend = () => {
-                group.imageSrc = reader.result;
-                resolve(group);
-              };
-              reader.onerror = reject;
-              reader.readAsDataURL(response.data);
-            });
-          } catch (error) {
-            console.error("Error fetching image:", error);
-            return group;
-          }
-        })
-      );
-      setGroups(groupsWithImages);
     } catch (error) {
       console.error("Error during search:", error);
     } finally {
@@ -152,6 +257,7 @@ const Hero = () => {
 
   const handleSelectChat = (group) => {
     setSelectedChat(group);
+    fetchMessages(group._id);
   };
 
   const handleUserSearch = async (event) => {
@@ -228,6 +334,16 @@ const Hero = () => {
       console.error("Error creating group:", error.message);
     }
   };
+  useEffect(() => {
+    return () => {
+      if (socket) {
+        socket.off("typing");
+        socket.off("stop typing");
+        socket.off("connected");
+        socket.off("message received");
+      }
+    };
+  }, [socket]);
 
   const handleOpenProfileModal = () => setProfileModalOpen(true);
   const handleCloseProfileModal = () => setProfileModalOpen(false);
@@ -240,11 +356,11 @@ const Hero = () => {
     localStorage.removeItem("token");
     navigate("/login");
   };
-
   return (
     <div className="hero-container">
       <div className="header">
-        <img src="https://picsum.photos/536/354" alt="Logo" className="logo" />
+        <img src={logo} alt="Logo" className="logo" />
+
         <h1 className="title">Chatter</h1>
         <Dropdown>
           <MenuButton className="menu-button">
@@ -264,7 +380,7 @@ const Hero = () => {
         </Dropdown>
       </div>
       <div className="chat-container">
-        <div className="chat-box">
+        <div className={`chat-box ${selectedChat ? "chat-selected" : ""}`}>
           <div className="groups">
             <div className="search-wrapper">
               <form onSubmit={handleSearch}>
@@ -285,23 +401,40 @@ const Hero = () => {
               </button>
             </div>
             {loading ? (
-              <div>Loading...</div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  height: "100%",
+                }}
+              >
+                <CircularProgress />
+              </div>
             ) : (
               groups.map((group, index) => (
-                <Button key={index} onClick={() => handleSelectChat(group)}>
+                <Button
+                  key={index}
+                  onClick={() => handleSelectChat(group)}
+                  sx={{ textTransform: "none" }}
+                >
                   <UserItem group={group} currentUser={currentUser} />
                 </Button>
               ))
             )}
           </div>
-          <div className="chats">
-            <ChatHeader
-              selectedChat={selectedChat}
-              currentUserId={currentUserId}
-              setSelectedChat={updateGroup} // Pass it here
-              token={token}
-            />
-          </div>
+          <ChatSection
+            selectedChat={selectedChat}
+            setSelectedChat={setSelectedChat}
+            currentUserId={currentUserId}
+            updateGroup={updateGroup}
+            token={token}
+            messages={messages}
+            newMessage={newMessage}
+            typingHandler={typingHandler}
+            handleSendMessage={handleSendMessage}
+            isTyping={isTyping}
+          />
         </div>
       </div>
 
@@ -316,7 +449,11 @@ const Hero = () => {
             <div className="profile-content">
               <Avatar
                 alt={currentUser.name}
-                src={currentUser.pic || "/static/images/avatar/default.jpg"}
+                src={
+                  currentUser.pic
+                    ? `${currentUser.pic}`
+                    : "/static/images/avatar/default.jpg"
+                }
                 className="profile-avatar"
               />
               <h2>{currentUser.name}</h2>

@@ -8,13 +8,13 @@ import { useNavigate } from "react-router-dom";
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  // const navigate = useNavigate();
-  // useEffect(() => {
-  //   const token = JSON.parse(localStorage.getItem("token"));
-  //   if (token) {
-  //     navigate("/");
-  //   }
-  // }, [navigate]);
+  const navigate = useNavigate();
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      navigate("/");
+    }
+  }, []);
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -34,9 +34,7 @@ const Login = () => {
       if (response.status === 201) {
         const data = response.data;
         localStorage.setItem("token", data.token);
-        alert("Login successful!");
-        // Redirect user or update state to indicate successful login
-        // navigate("/");
+        navigate("/");
       } else {
         alert("Login failed. Please try again.");
       }

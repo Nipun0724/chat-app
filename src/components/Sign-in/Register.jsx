@@ -1,29 +1,24 @@
 import React, { useState } from "react";
-import "./Sign-in.css";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import "./Sign-in.css";
 
 const Register = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [pic, setPic] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log(pic);
     try {
       const response = await axios.post(
         "http://localhost:8800/register",
+        { name, email, password, pic },
         {
-          name,
-          email,
-          password,
-          pic,
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
         }
       );
 
@@ -31,6 +26,7 @@ const Register = () => {
         const data = response.data;
         localStorage.setItem("token", data.token);
         alert("Registration successful!");
+        navigate("/");
       } else {
         alert("Registration failed. Please try again.");
       }
@@ -40,12 +36,25 @@ const Register = () => {
     }
   };
 
-  const postDetails = async (pics) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setPic(reader.result);
-    };
-    reader.readAsDataURL(pics);
+  const postDetails = async (file) => {
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append("avatar", file);
+    try {
+      const response = await axios.post(
+        "http://localhost:8800/upload/pic",
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        }
+      );
+      setPic(response.data.picUrl);
+      console.log(response.data.picUrl);
+    } catch (error) {
+      console.error("There was an error uploading the file:", error);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (
@@ -92,7 +101,12 @@ const Register = () => {
             onChange={(e) => postDetails(e.target.files[0])}
           />
           <div>
-            <input className="button input" type="submit" value="Submit" />
+            <input
+              className="button input"
+              type="submit"
+              value="Submit"
+              disabled={isUploading}
+            />
           </div>
         </form>
       </div>

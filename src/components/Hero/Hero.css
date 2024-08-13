@@ -1,8 +1,11 @@
+/* Existing CSS */
+
 .hero-container {
   background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)),
     url(../../assets/wallpaper.jpg) center/cover fixed no-repeat;
   height: 100vh;
 }
+
 .header {
   display: flex;
   align-items: center;
@@ -94,6 +97,8 @@
   background: rgba(0, 0, 0, 0.3);
   height: 100%;
   width: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .groups,
@@ -101,6 +106,7 @@
   overflow-y: auto;
   padding: 20px;
 }
+
 .chats {
   flex: 2;
   height: 100%;
@@ -109,12 +115,14 @@
   padding-top: 0px;
   padding-right: 0px;
 }
+
 .group-item {
   display: flex;
   align-items: center;
   gap: 15px;
-  margin-bottom: 15px;
+  margin-bottom: 5px;
   padding: 15px 10px;
+  width: 100%;
   border-bottom: 1px solid white;
 }
 
@@ -123,6 +131,7 @@
   font-size: 16px;
   font-weight: bold;
   color: white;
+  text-overflow: capitalize;
 }
 
 .group-item p {
@@ -216,7 +225,6 @@
   margin: 5px;
   color: #666;
 }
-/* Hero.css */
 
 .profile-modal-box,
 .group-modal-box,
@@ -254,6 +262,7 @@
   border-radius: 4px;
   cursor: pointer;
 }
+
 .group-content {
   display: flex;
   flex-direction: column;
@@ -279,4 +288,126 @@
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 16px;
+}
+
+.message-input-container {
+  background-color: #0d1d19;
+}
+
+.message-input {
+  width: 30vw;
+}
+
+.message-container::-webkit-scrollbar {
+  width: 6px; /* Make the scrollbar thin */
+}
+
+.message-container::-webkit-scrollbar-thumb {
+  background-color: #6ebdaa; /* Change the scrollbar thumb color to blue */
+  border-radius: 10px; /* Make the scrollbar thumb rounded */
+}
+
+.message-container::-webkit-scrollbar-track {
+  background: transparent; /* Set the scrollbar track background to transparent */
+}
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  position: absolute;
+  bottom: 60px; /* Position it above the message input */
+  left: 10px; /* Adjust the horizontal position as needed */
+  z-index: 1; /* Ensure it appears above other content */
+}
+
+/* Responsive CSS */
+
+@media (max-width: 768px) {
+  .message-container {
+    margin-bottom: -50px;
+  }
+  .message-input-container {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: 10px;
+    background-color: #0d1d19; /* Ensure background color matches */
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1); /* Optional shadow for separation */
+  }
+
+  .message-input {
+    width: calc(100% - 20px); /* Adjust width to fit within container padding */
+  }
+  .search {
+    width: 10rem; /* Adjust the width for mobile view */
+  }
+  .chat-box {
+    flex-direction: column;
+    width: 90vw;
+  }
+  .typing-indicator {
+    bottom: 80px; /* Adjust for mobile view */
+  }
+
+  .groups {
+    width: 100%;
+    border-right: none;
+  }
+
+  .back-icon {
+    display: none;
+    cursor: pointer;
+  }
+
+  .chats {
+    width: 100%;
+    display: none;
+    padding-bottom: 60px; /* Hide chats section */
+  }
+
+  .chat-box.chat-selected .chats {
+    display: block; /* Show chats section when a chat is selected */
+  }
+
+  .chat-box.chat-selected .groups {
+    display: none; /* Hide groups section when a chat is selected */
+  }
+}
+
+@media (max-width: 600px) {
+  .search {
+    width: 8rem; /* Further adjust the width for smaller screens */
+  }
+
+  .search-wrapper form {
+    width: 100%;
+  }
+
+  .search {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .search-wrapper {
+    flex-direction: row; /* Keep it row on mobile view */
+    gap: 0.5rem; /* Reduce gap for smaller screens */
+  }
+
+  .search-wrapper button {
+    margin-top: 0; /* Remove the margin top */
+  }
+  .search-icon {
+    top: 5px;
+  }
+  .back-icon {
+    display: block; /* Show the back icon on mobile view */
+    font-size: 24px;
+    margin-right: 10px;
+    color: #fff;
+  }
+
+  .chatSection-header {
+    display: flex;
+    align-items: center;
+  }
 }

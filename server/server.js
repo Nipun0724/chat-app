@@ -6,14 +6,46 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import User from "../src/models/userModel.js";
 import Chat from "../src/models/chatModel.js";
+import Message from "../src/models/messageModel.js";
+import multer from "multer";
+import { v2 as cloudinary } from "cloudinary";
+import { createServer } from "http";
+import { Server } from "socket.io";
 
 const app = express();
 app.use(cors());
 app.use(bodyParser.json({ limit: "10mb" }));
 app.use(bodyParser.urlencoded({ limit: "10mb", extended: true }));
 connectDB();
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/");
+  },
+  filename: (req, file, cb) => {
+    cb(null, `${Date.now()}-${file.originalname}`);
+  },
+});
+
+const upload = multer({ storage });
+
+cloudinary.config({
+  cloud_name: "dtuqpup4a",
+  api_key: "291317165429892",
+  api_secret: "qJq00V57nGffgM_ev-BcG5Tbmnk",
+});
 
 const secretKey = "X41romc$4F";
+
+const uploadCloudinary = async (localFilePath) => {
+  try {
+    const response = await cloudinary.uploader.upload(localFilePath, {
+      resource_type: "image",
+    });
+    return response.url;
+  } catch (error) {
+    console.error(error.message);
+  }
+};
 
 const verifyToken = (req, res, next) => {
   const authHeader = req.headers["authorization"];
@@ -35,6 +67,50 @@ const verifyToken = (req, res, next) => {
   });
 };
 
+app.get("/messages/:chatId", verifyToken, async (req, res) => {
+  try {
+    const messages = await Message.find({ chat: req.params.chatId })
+      .populate("sender", "name pic email")
+      .populate("chat");
+    res.json(messages);
+  } catch (error) {
+    console.error(error.message);
+  }
+});
+
+app.post("/messages", verifyToken, async (req, res) => {
+  const { content, chatId } = req.body;
+  const new_Message = {
+    sender: req.userId,
+    content,
+    chat: chatId,
+  };
+  try {
+    let message = await Message.create(new_Message);
+    message = await message.populate("sender", "name pic");
+    message = await message.populate("chat");
+    message = await User.populate(message, {
+      path: "chat.users",
+      select: "name pic email",
+    });
+    await Chat.findByIdAndUpdate(req.body.chatId, {
+      latestMessage: message,
+    });
+    res.json(message);
+  } catch (error) {
+    console.error(error.message);
+  }
+});
+
+app.post("/upload/pic", upload.single("avatar"), async (req, res) => {
+  try {
+    const responseUrl = await uploadCloudinary(req.file.path);
+    res.json({ picUrl: responseUrl });
+  } catch (error) {
+    res.status(500).send("Error uploading image");
+  }
+});
+
 app.get("/user/:id", async (req, res, next) => {
   const id = req.params.id;
   try {
@@ -42,24 +118,6 @@ app.get("/user/:id", async (req, res, next) => {
     res.json(user);
   } catch (error) {
     console.log(error.message);
-  }
-});
-
-app.get("/pic/:email", async (req, res, next) => {
-  const { email } = req.params;
-  try {
-    const user = await User.findOne({ email });
-
-    if (!user || !user.pic) {
-      return res
-        .status(404)
-        .json({ message: "User not found or image not available" });
-    }
-    res.set("Content-Type", "image/*");
-    res.send(user.pic);
-  } catch (error) {
-    console.error("Error fetching user image:", error);
-    next(error);
   }
 });
 
@@ -124,18 +182,11 @@ app.post("/register", async (req, res, next) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Convert the base64 image string to a Buffer
-    let picBuffer = null;
-    if (pic) {
-      const base64Data = pic.split(",")[1]; // Remove the data URL prefix if present
-      picBuffer = Buffer.from(base64Data, "base64");
-    }
-
     const user = await User.create({
       name,
       email,
       password: hashedPassword,
-      pic: picBuffer,
+      pic,
     });
 
     if (user) {
@@ -333,13 +384,58 @@ app.put("/remove-group", verifyToken, async (req, res) => {
   }
 });
 
-
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).send("Something broke!");
 });
 
 const PORT = 8800;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server listening at port ${PORT}`);
+});
+
+const io = new Server(server, {
+  pingTimeout: 60000,
+  cors: {
+    origin: "http://localhost:3000", // Adjust this to your frontend's URL
+  },
+});
+
+io.on("connection", (socket) => {
+  console.log("Connected to socket.io");
+  socket.on("setup", (userData) => {
+    socket.join(userData._id);
+    socket.emit("connected");
+  });
+
+  socket.on("join chat", (room) => {
+    socket.join(room);
+    console.log("User Joined Room: " + room);
+  });
+  socket.on("typing", (room) => {
+    console.log(`Typing event received for room: ${room}`);
+    socket.in(room).emit("typing");
+  });
+
+  socket.on("stop typing", (room) => {
+    console.log(`Stop typing event received for room: ${room}`);
+    socket.in(room).emit("stop typing");
+  });
+
+  socket.on("new message", (newMessageRecieved) => {
+    var chat = newMessageRecieved.chat;
+
+    if (!chat.users) return console.log("chat.users not defined");
+
+    chat.users.forEach((user) => {
+      if (user._id == newMessageRecieved.sender._id) return;
+
+      socket.in(user._id).emit("message recieved", newMessageRecieved);
+    });
+  });
+
+  socket.off("setup", () => {
+    console.log("USER DISCONNECTED");
+    socket.leave(userData._id);
+  });
 });
