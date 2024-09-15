@@ -65,7 +65,7 @@ const Hero = () => {
     }
   }, [navigate]);
   useEffect(() => {
-    const socketInstance = io(ENDPOINT);
+    const socketInstance = io("https://chat-app-0hnv.onrender.com");
     setSocket(socketInstance);
 
     socketInstance.on("connected", () => setSocketConnected(true));
