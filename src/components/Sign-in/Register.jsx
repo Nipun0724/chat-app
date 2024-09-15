@@ -10,12 +10,16 @@ const Register = () => {
   const [pic, setPic] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const navigate = useNavigate();
+  const ENDPOINT =
+    process.env.NODE_ENV === "production"
+      ? "https://chat-app-0hnv.onrender.com"
+      : "http://localhost:8800";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       const response = await axios.post(
-        "http://localhost:8800/register",
+        `${ENDPOINT}/register`,
         { name, email, password, pic },
         {
           headers: { "Content-Type": "application/json" },
@@ -41,13 +45,9 @@ const Register = () => {
     const formData = new FormData();
     formData.append("avatar", file);
     try {
-      const response = await axios.post(
-        "http://localhost:8800/upload/pic",
-        formData,
-        {
-          headers: { "Content-Type": "multipart/form-data" },
-        }
-      );
+      const response = await axios.post(`${ENDPOINT}/upload/pic`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
       setPic(response.data.picUrl);
       console.log(response.data.picUrl);
     } catch (error) {

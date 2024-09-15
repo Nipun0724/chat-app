@@ -9,6 +9,10 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
+  const ENDPOINT =
+    process.env.NODE_ENV === "production"
+      ? "https://chat-app-0hnv.onrender.com"
+      : "http://localhost:8800";
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
@@ -19,7 +23,7 @@ const Login = () => {
     e.preventDefault();
     try {
       const response = await axios.post(
-        "http://localhost:8800/login",
+        `${ENDPOINT}/login`,
         {
           email,
           password,

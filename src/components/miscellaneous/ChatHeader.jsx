@@ -30,6 +30,10 @@ const ChatHeader = ({
   const [loading, setLoading] = useState(false);
   const [anchorEl, setAnchorEl] = React.useState(null);
   const open = Boolean(anchorEl);
+  const ENDPOINT =
+    process.env.NODE_ENV === "production"
+      ? "https://chat-app-0hnv.onrender.com"
+      : "http://localhost:8800";
 
   const handleClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -112,7 +116,7 @@ const ChatHeader = ({
 
     try {
       const response = await axios.post(
-        `http://localhost:8800/search/${searchValue}`,
+        `${ENDPOINT}/search/${searchValue}`,
         {},
         {
           headers: {
@@ -151,7 +155,7 @@ const ChatHeader = ({
 
     try {
       const response = await axios.put(
-        "http://localhost:8800/rename-group",
+        `${ENDPOINT}/rename-group`,
         {
           chatId: selectedChat._id,
           chatName: newGroupName,
@@ -174,7 +178,7 @@ const ChatHeader = ({
 
     try {
       const response = await axios.put(
-        "http://localhost:8800/add-group",
+        `${ENDPOINT}/add-group`,
         {
           chatId: selectedChat._id,
           userIds,
@@ -196,7 +200,7 @@ const ChatHeader = ({
     console.log("Attempting to remove user:", userId);
     try {
       const response = await axios.put(
-        "http://localhost:8800/remove-group",
+        `${ENDPOINT}/remove-group`,
         {
           chatId: selectedChat._id,
           userId: userId,

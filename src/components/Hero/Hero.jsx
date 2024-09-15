@@ -41,7 +41,10 @@ const Hero = () => {
   const typingTimeoutRef = useRef(null);
 
   const navigate = useNavigate();
-  const ENDPOINT = "http://localhost:8800";
+  const ENDPOINT =
+    process.env.NODE_ENV === "production"
+      ? "https://chat-app-0hnv.onrender.com"
+      : "http://localhost:8800";
 
   const parseJwt = (token) => {
     try {
@@ -86,7 +89,7 @@ const Hero = () => {
 
     try {
       const response = await axios.post(
-        "http://localhost:8800/messages",
+        `${ENDPOINT}/messages`,
         { chatId: selectedChat._id, content: newMessage },
         {
           headers: {
@@ -149,7 +152,7 @@ const Hero = () => {
   const fetchChats = async () => {
     setLoading(true);
     try {
-      const response = await axios.get("http://localhost:8800/chats", {
+      const response = await axios.get(`${ENDPOINT}/chats`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -165,14 +168,11 @@ const Hero = () => {
   const fetchMessages = async (chatId) => {
     // setLoading(true);
     try {
-      const response = await axios.get(
-        `http://localhost:8800/messages/${chatId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await axios.get(`${ENDPOINT}/messages/${chatId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       setMessages(response.data);
       if (socket) {
         socket.emit("join chat", chatId);
@@ -198,7 +198,7 @@ const Hero = () => {
     const fetchUser = async () => {
       try {
         const currentUserResponse = await axios.get(
-          `http://localhost:8800/user/${currentUserId}`,
+          `${ENDPOINT}/user/${currentUserId}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -243,7 +243,7 @@ const Hero = () => {
       const token = localStorage.getItem("token");
 
       const result = await axios.post(
-        `http://localhost:8800/search/${search}`,
+        `${ENDPOINT}/search/${search}`,
         {},
         {
           headers: {
@@ -277,7 +277,7 @@ const Hero = () => {
     try {
       const token = localStorage.getItem("token");
       const result = await axios.post(
-        `http://localhost:8800/search/${event.target.value}`,
+        `${ENDPOINT}/search/${event.target.value}`,
         {},
         {
           headers: {
@@ -300,7 +300,7 @@ const Hero = () => {
   const handleAddChat = async (user) => {
     try {
       const response = await axios.post(
-        "http://localhost:8800/chats",
+        `${ENDPOINT}/chats`,
         { userId: user._id },
         {
           headers: {
@@ -328,7 +328,7 @@ const Hero = () => {
       }
 
       const response = await axios.post(
-        "http://localhost:8800/group",
+        `${ENDPOINT}/group`,
         {
           name: groupName,
           users: JSON.stringify(selectedUsers.map((user) => user._id)),
