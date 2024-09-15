@@ -424,6 +424,8 @@ const Hero = () => {
                 <CircularProgress />
               </div>
             ) : (
+              Array.isArray(groups) &&
+              groups.length > 0 &&
               groups.map((group, index) => {
                 const otherUser = group.users.find(
                   (user) => user._id !== currentUser._id
