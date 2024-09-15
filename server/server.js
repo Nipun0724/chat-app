@@ -413,7 +413,7 @@ const server = app.listen(PORT, () => {
 const io = new Server(server, {
   pingTimeout: 60000,
   cors: {
-    origin: "http://localhost:3000", // Adjust this to your frontend's URL
+    origin: "https://chat-app-0hnv.onrender.com", // Adjust this to your frontend's URL
   },
 });
 
