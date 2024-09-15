@@ -210,10 +210,9 @@
   padding: 10px;
   margin-bottom: 10px;
   color: #fff;
-  position: sticky;
+  position: fixed;
   top: 0;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(20px);
+  background-color: #0d1d19;
 }
 
 .chats-header h2 {
@@ -299,31 +298,35 @@
 }
 
 .message-container::-webkit-scrollbar {
-  width: 6px; /* Make the scrollbar thin */
+  width: 0px; /* Make the scrollbar thin */
 }
 
-.message-container::-webkit-scrollbar-thumb {
-  background-color: #6ebdaa; /* Change the scrollbar thumb color to blue */
-  border-radius: 10px; /* Make the scrollbar thumb rounded */
+.message-container {
+  max-height: calc(100vh - 100px); /* Adjust height to fit input field */
 }
 
-.message-container::-webkit-scrollbar-track {
-  background: transparent; /* Set the scrollbar track background to transparent */
-}
-.typing-indicator {
+.chatSection-header {
   display: flex;
   align-items: center;
-  position: absolute;
-  bottom: 60px; /* Position it above the message input */
-  left: 10px; /* Adjust the horizontal position as needed */
-  z-index: 1; /* Ensure it appears above other content */
+  width: 50vw;
+  min-height: 6vh;
 }
 
+.bell-icon {
+  margin-left: 85%;
+  position: absolute;
+}
 /* Responsive CSS */
 
 @media (max-width: 768px) {
+  .chats-header {
+    background-color: #0f1d19;
+  }
+  .message-container::-webkit-scrollbar {
+    width: 0px; /* Make the scrollbar thin */
+  }
   .message-container {
-    margin-bottom: -50px;
+    max-height: calc(100vh - 150px); /* Reduce height for smaller screens */
   }
   .message-input-container {
     position: fixed;
@@ -345,9 +348,6 @@
     flex-direction: column;
     width: 90vw;
   }
-  .typing-indicator {
-    bottom: 80px; /* Adjust for mobile view */
-  }
 
   .groups {
     width: 100%;
@@ -362,7 +362,7 @@
   .chats {
     width: 100%;
     display: none;
-    padding-bottom: 60px; /* Hide chats section */
+    padding-bottom: 10px; /* Hide chats section */
   }
 
   .chat-box.chat-selected .chats {
@@ -404,10 +404,24 @@
     font-size: 24px;
     margin-right: 10px;
     color: #fff;
+    position: fixed;
+    top: 20px;
+    z-index: 1;
   }
 
   .chatSection-header {
     display: flex;
     align-items: center;
+    width: 75vw;
   }
+  .chat-name {
+    padding-left: 20px;
+  }
+}
+.placeholder-text {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 25%;
+  color: #fff;
 }

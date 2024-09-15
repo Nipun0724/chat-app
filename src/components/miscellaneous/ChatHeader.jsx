@@ -8,15 +8,19 @@ import {
   Button,
   Chip,
   CircularProgress,
+  MenuItem,
+  Menu,
 } from "@mui/material";
 import axios from "axios";
 import DeleteIcon from "@mui/icons-material/Delete";
+import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
 
 const ChatHeader = ({
   selectedChat,
   currentUserId,
   setSelectedChat,
   token,
+  notifications,
 }) => {
   const [modalOpen, setModalOpen] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
@@ -24,6 +28,16 @@ const ChatHeader = ({
   const [userResults, setUserResults] = useState([]);
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [anchorEl, setAnchorEl] = React.useState(null);
+  const open = Boolean(anchorEl);
+
+  const handleClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
 
   useEffect(() => {
     if (selectedChat?.chatName) {
@@ -34,7 +48,42 @@ const ChatHeader = ({
   if (!selectedChat) {
     return (
       <div className="chats-header">
-        <h3>Chats</h3>
+        <div className="chatSection-header">
+          <div className="bell-icon">
+            <Button
+              id="basic-button"
+              aria-controls={open ? "basic-menu" : undefined}
+              aria-haspopup="true"
+              aria-expanded={open ? "true" : undefined}
+              onClick={handleClick}
+            >
+              <NotificationsActiveIcon />
+            </Button>
+            <Menu
+              id="basic-menu"
+              anchorEl={anchorEl}
+              open={open}
+              onClose={handleClose}
+              MenuListProps={{
+                "aria-labelledby": "basic-button",
+              }}
+            >
+              {notifications.length === 0 ? (
+                <MenuItem disabled>No messages to display</MenuItem>
+              ) : (
+                notifications.map((notification) => (
+                  <MenuItem
+                    key={notification._id}
+                    onClick={() => handleNotificationClick(notification)}
+                  >
+                    {notification.sender.name}: {notification.content}{" "}
+                    {/* Display message content */}
+                  </MenuItem>
+                ))
+              )}
+            </Menu>
+          </div>
+        </div>
       </div>
     );
   }
@@ -165,17 +214,62 @@ const ChatHeader = ({
     }
   };
 
+  // New function to handle notification click
+  const handleNotificationClick = (notification) => {
+    setSelectedChat(notification.chat); // Open the chat associated with the notification
+    handleClose(); // Close the dropdown menu
+  };
+
   return (
     <div className="chats-header">
-      {selectedChat.isGroupChat ? (
-        <Button onClick={handleOpenModal} sx={{ textTransform: "none" }}>
-          <h3 style={{ color: "white" }}>{selectedChat.chatName}</h3>
-        </Button>
-      ) : (
-        <Button onClick={handleOpenModal} sx={{ textTransform: "none" }}>
-          <h3 style={{ color: "white" }}>{otherUser?.name}</h3>
-        </Button>
-      )}
+      <div className="chatSection-header">
+        {selectedChat.isGroupChat ? (
+          <Button onClick={handleOpenModal} sx={{ textTransform: "none" }}>
+            <h3 style={{ color: "white" }} className="chat-name">
+              {selectedChat.chatName}
+            </h3>
+          </Button>
+        ) : (
+          <Button onClick={handleOpenModal} sx={{ textTransform: "none" }}>
+            <h3 style={{ color: "white" }} className="chat-name">
+              {otherUser?.name}
+            </h3>
+          </Button>
+        )}
+        <div className="bell-icon">
+          <Button
+            id="basic-button"
+            aria-controls={open ? "basic-menu" : undefined}
+            aria-haspopup="true"
+            aria-expanded={open ? "true" : undefined}
+            onClick={handleClick}
+          >
+            <NotificationsActiveIcon />
+          </Button>
+          <Menu
+            id="basic-menu"
+            anchorEl={anchorEl}
+            open={open}
+            onClose={handleClose}
+            MenuListProps={{
+              "aria-labelledby": "basic-button",
+            }}
+          >
+            {notifications.length === 0 ? (
+              <MenuItem disabled>No messages to display</MenuItem>
+            ) : (
+              notifications.map((notification) => (
+                <MenuItem
+                  key={notification._id}
+                  onClick={() => handleNotificationClick(notification)}
+                >
+                  {notification.content} {/* Display message content */}
+                </MenuItem>
+              ))
+            )}
+          </Menu>
+        </div>
+      </div>
 
       <Modal
         open={modalOpen}
@@ -183,20 +277,27 @@ const ChatHeader = ({
         aria-labelledby="modal-modal-title"
         aria-describedby="modal-modal-description"
       >
-        <Box className="modal-box">
+        <Box
+          className="modal-box"
+          sx={{
+            width: "50%",
+            maxHeight: "80vh", // Limits the height to 80% of the viewport
+            overflowY: "auto", // Ensures scrolling when content exceeds height
+          }}
+        >
           <Avatar
             alt={selectedChat.chatName}
             src={selectedChat.isGroupChat ? groupPic : otherUser?.pic}
             className="profile-avatar"
           />
-          <h2 style={{ marginBottom: "10px" }}>
+          <h2 style={{ marginBottom: "20px" }}>
             {selectedChat.isGroupChat ? selectedChat.chatName : otherUser?.name}
           </h2>
-          <p style={{ marginBottom: "10px" }}>
+          <p style={{ marginBottom: "20px" }}>
             Created: {new Date(selectedChat.createdAt).toLocaleDateString()}
           </p>
           {selectedChat.isGroupChat && (
-            <p style={{ marginBottom: "10px" }}>
+            <p style={{ marginBottom: "20px" }}>
               Group Admin: {selectedChat.groupAdmin.name}
             </p>
           )}
@@ -245,6 +346,7 @@ const ChatHeader = ({
                     avatar={<Avatar src={user.pic} alt={user.name} />}
                     label={user.name}
                     onDelete={() => handleRemoveUser(user._id)}
+                    sx={{ marginBottom: "20px" }}
                   />
                 ))}
               </div>

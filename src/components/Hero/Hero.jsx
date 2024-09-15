@@ -29,11 +29,13 @@ const Hero = () => {
   const [typing, setTyping] = useState(false);
   const [socket, setSocket] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
+  const [currentUserId, setCurrentUserId] = useState(null);
   const [groupModalOpen, setGroupModalOpen] = useState(false);
   const [chatModalOpen, setChatModalOpen] = useState(false);
   const [groupName, setGroupName] = useState("");
   const [userSearch, setUserSearch] = useState("");
   const [userResults, setUserResults] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const [selectedUsers, setSelectedUsers] = useState([]);
   const selectedChatCompareRef = useRef(null);
   const typingTimeoutRef = useRef(null);
@@ -50,9 +52,15 @@ const Hero = () => {
   };
 
   const token = localStorage.getItem("token");
-  const decodedToken = parseJwt(token);
-  const currentUserId = decodedToken.userId;
-
+  useEffect(() => {
+    let token_ = localStorage.getItem("token");
+    if (!token_) {
+      navigate("/login");
+    } else {
+      const decodedToken = parseJwt(token_);
+      setCurrentUserId(decodedToken.userId);
+    }
+  }, [navigate]);
   useEffect(() => {
     const socketInstance = io(ENDPOINT);
     setSocket(socketInstance);
@@ -60,18 +68,11 @@ const Hero = () => {
     socketInstance.on("connected", () => setSocketConnected(true));
     socketInstance.on("typing", () => setIsTyping(true));
     socketInstance.on("stop typing", () => setIsTyping(false));
-    socketInstance.on("message received", (newMessageReceived) => {
-      if (selectedChatCompareRef.current !== newMessageReceived.chat._id) {
-        // Optionally, show a notification
-      } else {
-        setMessages((prevMessages) => [...prevMessages, newMessageReceived]);
-      }
-    });
 
     return () => {
       socketInstance.disconnect();
     };
-  }, [ENDPOINT, currentUser]);
+  }, [ENDPOINT]);
 
   useEffect(() => {
     if (socket && currentUser) {
@@ -81,7 +82,6 @@ const Hero = () => {
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    socket.emit("stop typing", selectedChat._id);
     if (!newMessage.trim()) return;
 
     try {
@@ -95,19 +95,25 @@ const Hero = () => {
         }
       );
 
-      const updatedChat = {
-        ...selectedChat,
-        latestMessage: response.data,
-      };
-      socket.emit("new message", response.data);
-      updateGroup(updatedChat);
-      setMessages((prevMessages) => [...prevMessages, response.data]);
-      setNewMessage("");
+      const newMessageData = response.data;
+
+      // Emit the message through socket
+      socket.emit("new message", newMessageData);
+
+      // Update the messages state with the new message
+      setMessages((prevMessages) => [...prevMessages, newMessageData]);
+
+      // Update the specific chat in groups with the latest message
       setGroups((prevGroups) =>
         prevGroups.map((group) =>
-          group._id === updatedChat._id ? updatedChat : group
+          group._id === selectedChat._id
+            ? { ...group, latestMessage: newMessageData }
+            : group
         )
       );
+
+      // Clear the input field
+      setNewMessage("");
     } catch (error) {
       console.error("Error sending message:", error);
     }
@@ -211,27 +217,24 @@ const Hero = () => {
   }, [currentUserId, token]);
 
   useEffect(() => {
-    if (!socket) {
-      // If the socket is not initialized, return early
-      return;
-    }
-
     const messageHandler = (newMessageReceived) => {
+      console.log("New message received:", newMessageReceived);
       if (selectedChatCompareRef.current !== newMessageReceived.chat._id) {
-        // Optionally, show a notification
+        if (!notifications.includes(newMessageReceived)) {
+          setNotifications([newMessageReceived, ...notifications]);
+        }
       } else {
         setMessages((prevMessages) => [...prevMessages, newMessageReceived]);
       }
+      fetchChats();
     };
 
-    socket.on("message received", messageHandler);
+    socket?.on("message received", messageHandler);
 
     return () => {
-      socket.off("message received", messageHandler);
+      socket?.off("message received", messageHandler);
     };
   }, [socket]);
-
-  // Move the messages dependency out of useEffect to avoid re-registering the event listener
 
   const handleSearch = async (event) => {
     event.preventDefault();
@@ -256,6 +259,15 @@ const Hero = () => {
   };
 
   const handleSelectChat = (group) => {
+    // Filter out the notification for the selected chat
+    const updatedNotifications = notifications.filter(
+      (notification) => notification.chat._id !== group._id
+    );
+
+    // Update the notifications state
+    setNotifications(updatedNotifications);
+
+    // Set the selected chat and fetch its messages
     setSelectedChat(group);
     fetchMessages(group._id);
   };
@@ -412,15 +424,20 @@ const Hero = () => {
                 <CircularProgress />
               </div>
             ) : (
-              groups.map((group, index) => (
-                <Button
-                  key={index}
-                  onClick={() => handleSelectChat(group)}
-                  sx={{ textTransform: "none" }}
-                >
-                  <UserItem group={group} currentUser={currentUser} />
-                </Button>
-              ))
+              groups.map((group, index) => {
+                const otherUser = group.users.find(
+                  (user) => user._id !== currentUser._id
+                );
+                return (
+                  <Button
+                    key={index}
+                    onClick={() => handleSelectChat(group)}
+                    sx={{ textTransform: "none" }}
+                  >
+                    <UserItem group={group} otherUser={otherUser} />
+                  </Button>
+                );
+              })
             )}
           </div>
           <ChatSection
@@ -434,6 +451,7 @@ const Hero = () => {
             typingHandler={typingHandler}
             handleSendMessage={handleSendMessage}
             isTyping={isTyping}
+            notifications={notifications}
           />
         </div>
       </div>

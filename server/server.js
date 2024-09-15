@@ -403,8 +403,11 @@ const io = new Server(server, {
 
 io.on("connection", (socket) => {
   console.log("Connected to socket.io");
+
+  // Save user data on setup
   socket.on("setup", (userData) => {
     socket.join(userData._id);
+    socket.userData = userData; // Store userData in socket instance
     socket.emit("connected");
   });
 
@@ -412,6 +415,7 @@ io.on("connection", (socket) => {
     socket.join(room);
     console.log("User Joined Room: " + room);
   });
+
   socket.on("typing", (room) => {
     console.log(`Typing event received for room: ${room}`);
     socket.in(room).emit("typing");
@@ -430,12 +434,15 @@ io.on("connection", (socket) => {
     chat.users.forEach((user) => {
       if (user._id == newMessageRecieved.sender._id) return;
 
-      socket.in(user._id).emit("message recieved", newMessageRecieved);
+      socket.to(user._id).emit("message received", newMessageRecieved);
     });
   });
 
-  socket.off("setup", () => {
-    console.log("USER DISCONNECTED");
-    socket.leave(userData._id);
+  // Handle disconnect event
+  socket.on("disconnect", () => {
+    if (socket.userData) {
+      console.log("USER DISCONNECTED", socket.userData._id);
+      socket.leave(socket.userData._id);
+    }
   });
 });
